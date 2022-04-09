@@ -3,10 +3,12 @@ This project is based on PlatformIO and a chinese cheap ESP32-CAM to get a video
 
 It's a working developer revision, but you could test and use it because is a **working** one and some features are taking into account to be developed in future
 
- ##Future features
+## Future features
  - Wifi AP with web configurator like all IoT
  - Sleeping mode to improve battery life
  - Hardware trigger (motion, light, water, distance...)
+
+![ESP32-TELECAM](https://i.ibb.co/N2p3gpr/esp32-telecam.png)
 
 ## Configuration
 At this revision it's needed a configuration file stored at lib/core/configuration.h. for wifi and telegram credentials (API_TOKEN and SSID:PASSWORD)
