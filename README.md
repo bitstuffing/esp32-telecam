@@ -5,8 +5,13 @@ It's a working developer revision, but you could test and use it because is a **
 
 ## Future features
  - Wifi AP with web configurator like all IoT
+ - Web servo motion ( dashboard with servo driver )
  - Sleeping mode to improve battery life
  - Hardware trigger (motion, light, water, distance...)
+ - Motion and focus detected target following
+
+
+## Preview
 
 ![ESP32-TELECAM](https://i.ibb.co/N2p3gpr/esp32-telecam.png)
 
