@@ -11,6 +11,10 @@ It's a working developer revision, but you could test and use it because is a **
  - Motion and focus detected target following
 
 
+## 3D web model (OnShape CAD)
+
+https://cad.onshape.com/documents/77f04ae4b5fcef7d9e99be35/w/0d8533bbdae142046f8fdeea/e/9711b1c9e78f932d2447bd4e?renderMode=0&uiState=638a0af07e7369624d2191ba
+
 ## Preview
 
 ![ESP32-TELECAM](https://i.ibb.co/N2p3gpr/esp32-telecam.png)
