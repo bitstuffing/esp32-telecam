@@ -15,6 +15,7 @@
 #include "configuration.h"
 
 bool reboot_request = false;
+bool sleep_mode = false;
 
 #define CAMERA_MODEL_AI_THINKER
 #define PWDN_GPIO_NUM     32
@@ -38,7 +39,7 @@ bool reboot_request = false;
 // change timezone with https://sites.google.com/a/usapiens.com/opnode/time-zones
 String TIMEZONE = "CET-1CEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00";
 
-static const char vernum[] = "esp32-cam telegram 0.1";
+static const char vernum[] = "esp32-cam telegram 0.2";
 String devstr =  "ESP32-TeleCam";
 framesize_t configframesize = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
 
@@ -53,8 +54,7 @@ int max_frames = 50;
 #define FLASH_LED_PIN 4
 float speed_up_factor = 0.5; // 1 = play at realtime, 0.5 = slow motion, 10 = speedup 10x
 
-int Bot_mtbs = 5000; //mean time between scan messages
-long Bot_lasttime;   //last time messages' scan has been done
+long bot_lasttime;   //last time messages' scan has been done
 
 bool flashState = LOW;
 
@@ -64,6 +64,7 @@ camera_fb_t * vid_fb = NULL;
 TaskHandle_t the_camera_loop_task;
 void the_camera_loop (void* pvParameter) ;
 
+bool led_is_on = true;
 bool video_ready = false;
 bool picture_ready = false;
 bool active_interupt = false;

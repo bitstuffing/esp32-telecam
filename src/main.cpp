@@ -33,7 +33,10 @@ void setup() {
   Serial.print("\n- Free heap: "); Serial.println(ESP.getFreeHeap());
   Serial.print("\n- Total PSRAM: "); Serial.println(ESP.getPsramSize());
   Serial.print("\n- Free PSRAM: "); Serial.println(ESP.getFreePsram());
+  Serial.print("\n- Connection times: ");Serial.println(bootCount);
   Serial.println("------------------------------------");
+
+  bootCount++;
 
   pinMode(FLASH_LED_PIN, OUTPUT);
   digitalWrite(FLASH_LED_PIN, flashState); //defaults to low
@@ -65,38 +68,40 @@ void setup() {
       Serial.print("Pic, len="); Serial.print(fb->len);
       Serial.printf(", new fb %X\n", (long)fb->buf);
       esp_camera_fb_return(fb);
-      /*Serial.print("Total heap: "); Serial.println(ESP.getHeapSize());
-      Serial.print("Free heap: "); Serial.println(ESP.getFreeHeap());
-      Serial.print("Total PSRAM: "); Serial.println(ESP.getPsramSize());
-      Serial.print("Free PSRAM: "); Serial.println(ESP.getFreePsram());*/
+      
       delay(20);
     }
   }
 
-  init_wifi();
-
-  //Make the bot wait for a new message for up to 60 seconds with bot.longPoll = 60
-  bot.longPoll = 5;
-
-  client.setInsecure();
-
-  String stat = "Reboot\nDevice: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nIP: " +  WiFi.localIP().toString() + "\n/start";
-  bot.sendMessage(chat_id, stat, "");
-
-  avi_enabled = true;
-  digitalWrite(33, HIGH);
+  if(init_wifi()){
+    bot.longPoll = 5; //Make the bot wait for a new message 5 seconds
+    client.setInsecure();
+    String stat = "Reboot\nDevice: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nIP: " +  WiFi.localIP().toString() + "\n/start";
+    bot.sendMessage(chat_id, stat, "");
+    avi_enabled = true;
+  }else{
+    Serial.println("sleeping to wait for network connection router...");
+    esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+    esp_deep_sleep_start();
+  }
 }
 
 /** LOOP **/
 void loop() {
 
-  client.setHandshakeTimeout(120000); // workaround for esp32-arduino 2.02 bug https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/issues/270#issuecomment-1003795884
+  client.setHandshakeTimeout(120000);
 
   if (reboot_request) {
     String stat = "Rebooting on request\nDevice: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nip: " +  WiFi.localIP().toString() ;
     bot.sendMessage(chat_id, stat, "");
     delay(10000);
     ESP.restart();
+  }
+  if(sleep_mode){
+    bot.sendMessage(chat_id, "Sleeping "+String(TIME_TO_SLEEP)+" seconds", "");
+    digitalWrite(33, LOW);
+    esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+    esp_deep_sleep_start();
   }
 
   if (picture_ready) {
@@ -109,15 +114,23 @@ void loop() {
     sendVideo();
   }
 
-  if (millis() > Bot_lasttime + Bot_mtbs )  {
+  
+  digitalWrite(33, led_is_on ? HIGH : LOW);
+  
+  
+  if (millis() > bot_lasttime + BOT_MTBS )  {
 
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("***** WiFi reconnect *****");
       WiFi.reconnect();
       delay(5000);
       if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("***** WiFi rerestart *****");
-        init_wifi();
+        Serial.println("***** WiFi restart *****");
+        if(!init_wifi()){
+          Serial.println("sleeping to wait for network connection router...");
+          esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+          esp_deep_sleep_start();
+        }
       }
     }
 
@@ -127,6 +140,8 @@ void loop() {
       handleNewMessages(numNewMessages);
       numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     }
-    Bot_lasttime = millis();
+    bot_lasttime = millis();
   }
+  
+  delay(500); //reasonable loop timeout
 }

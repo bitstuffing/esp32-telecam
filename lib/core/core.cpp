@@ -356,6 +356,10 @@ void handleNewMessages(int numNewMessages) {
         bot.sendMessage(chat_id, stat, "");
       }
 
+      if(text == "/sleep"){ 
+        sleep_mode = true;
+      }
+
       if (text == "/reboot") {
         reboot_request = true;
       }
@@ -443,7 +447,6 @@ void handleNewMessages(int numNewMessages) {
         bot.longPoll =  0;
 
         xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
-        //xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 0);  //v8.5
 
         if ( the_camera_loop_task == NULL ) {
           //vTaskDelete( xHandle );
@@ -547,35 +550,41 @@ bool init_wifi() {
   WiFi.setHostname(devname);
   WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED) {
+  int retries = 0;
+
+  while (retries < LIMIT_RETRIES && WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(500);
+    retries++;
   }
 
-  //TODO check with esp_err_t set_ps = returned value, esp_err_t and sys.exit(-1) code
-  esp_wifi_set_ps(WIFI_PS_NONE);
+  if(WiFi.status() == WL_CONNECTED){ //ntp
+    //TODO check with esp_err_t set_ps = returned value, esp_err_t and sys.exit(-1) code
+    esp_wifi_set_ps(WIFI_PS_NONE);
 
-  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, brown_reg_temp);
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, brown_reg_temp);
 
-  configTime(0, 0, "pool.ntp.org");
-  char tzchar[80];
-  TIMEZONE.toCharArray(tzchar, TIMEZONE.length()); // name of your camera for mDNS, Router, and filenames
-  setenv("TZ", tzchar, 1);  // mountain time zone from #define at top
-  tzset();
+    configTime(0, 0, "pool.ntp.org");
+    char tzchar[80];
+    TIMEZONE.toCharArray(tzchar, TIMEZONE.length()); // name of your camera for mDNS, Router, and filenames
+    setenv("TZ", tzchar, 1);  // mountain time zone from #define at top
+    tzset();
 
-  if (!MDNS.begin(devname)) {
-    Serial.println("Error setting up MDNS responder!");
-    return false;
-  } else {
-    Serial.printf("mDNS responder started '%s'\n", devname);
+    if (!MDNS.begin(devname)) {
+      Serial.println("Error setting up MDNS responder!");
+      return false;
+    } else {
+      Serial.printf("mDNS responder started '%s'\n", devname);
+    }
+    time(&now);
+
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+    return true;
   }
-  time(&now);
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-  return true;
+  return false;
 }
 
 void sendPicture() {
