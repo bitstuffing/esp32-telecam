@@ -7,3 +7,5 @@ String chat_id = "999999";
 // your network SSID and PASSWORD
 char ssid[] = "SSID";
 char password[] = "WIFI_PASSWD";
+//list of admin users, it must be the Telegram @ID without @
+String authUsers[] = {"username"};

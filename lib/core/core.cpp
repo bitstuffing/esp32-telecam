@@ -1,6 +1,8 @@
 #include "core.h"
 #include <ESPmDNS.h>
 
+#include "utils.h"
+
 /*
 * Take a picture and make sure it has a good jpeg
 */
@@ -272,7 +274,6 @@ void end_avi() {
     Serial.printf("Frame duration is %d us\n", us_per_frame);
     Serial.printf("Average frame length is %d bytes\n", uVideoLen / frame_cnt);
 
-
     Serial.printf("Writng the index, %d frames\n", frame_cnt);
 
     memcpy (psram_avi_ptr, idx1_buf, 4);
@@ -310,142 +311,164 @@ void handleNewMessages(int numNewMessages) {
     String text = bot.messages[i].text;
 
     Serial.printf("\nGot a message %s\n", text);
-
+    
     String from_name = bot.messages[i].from_name;
+    String username = bot.messages[i].username;
     if (from_name == "") from_name = "Guest";
 
+    Serial.print("message from: ");
+    Serial.println(username);
+    
     String hi = "Got: ";
     hi += text;
     bot.sendMessage(chat_id, hi, "Markdown");
     client.setHandshakeTimeout(120000);
-    if (text == "/flash") {
-      flashState = !flashState;
-      digitalWrite(FLASH_LED_PIN, flashState);
-    }
 
-    if (text == "/status") {
-      String stat = "Device: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nip: " +  WiFi.localIP().toString() + "\nAvi Enabled: " + avi_enabled;
-      if (frame_interval == 0) {
-        stat = stat + "\nFast 3 sec";
-      } else if (frame_interval == 125) {
-        stat = stat + "\nMed 10 sec";
-      } else {
-        stat = stat + "\nSlow 40 sec";
-      }
-      stat = stat + "\nQuality: " + quality;
-
-      bot.sendMessage(chat_id, stat, "");
-    }
-
-    if (text == "/reboot") {
-      reboot_request = true;
-    }
-    if (text == "/enavi") {
-      avi_enabled = true;
-    }
-
-    if (text == "/disavi") {
-      avi_enabled = false;
-    }
-
-    if (text == "/fast") {
-      max_frames = 50;
-      frame_interval = 0;
-      speed_up_factor = 0.5;
-      avi_enabled = true;
-    }
-
-    if (text == "/med") {
-      max_frames = 50;
-      frame_interval = 125;
-      speed_up_factor = 1;
-      avi_enabled = true;
-    }
-
-    if (text == "/slow") {
-      max_frames = 50;
-      frame_interval = 500;
-      speed_up_factor = 5;
-      avi_enabled = true;
-    }
-
-    for (int j = 0; j < 4; j++) {
-      camera_fb_t * newfb = esp_camera_fb_get();
-      if (!newfb) {
-        Serial.println("Camera Capture Failed");
-      } else {
-        esp_camera_fb_return(newfb);
-        delay(10);
+    boolean auth = false;
+    if(authUsers!=NULL){
+      for(int i=0;!auth && i<NUM_ITEMS(authUsers);i++){
+        String target = authUsers[i];
+        auth = target != NULL && target == username;
       }
     }
 
-    if ( text == "/photo" || text == "/caption" ) {
+    if(auth){
+      
+      Serial.print(username);
+      Serial.println(" is authorized, continue...");
 
-      fb = NULL;
-
-      // Take Picture with Camera
-      fb = esp_camera_fb_get();
-      if (!fb) {
-        Serial.println("Camera capture failed");
-        bot.sendMessage(chat_id, "Camera capture failed", "");
-        return;
+      if (text == "/flash") {
+        flashState = !flashState;
+        digitalWrite(FLASH_LED_PIN, flashState);
       }
 
-      currentByte = 0;
-      fb_length = fb->len;
-      fb_buffer = fb->buf;
+      if (text == "/status") {
+        String stat = "Device: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nip: " +  WiFi.localIP().toString() + "\nAvi Enabled: " + avi_enabled;
+        if (frame_interval == 0) {
+          stat = stat + "\nFast 3 sec";
+        } else if (frame_interval == 125) {
+          stat = stat + "\nMed 10 sec";
+        } else {
+          stat = stat + "\nSlow 40 sec";
+        }
+        stat = stat + "\nQuality: " + quality;
 
-      if (text == "/caption") {
-
-        Serial.println("\n>>>>> Sending with a caption, bytes=  " + String(fb_length));
-
-        String sent = bot.sendMultipartFormDataToTelegramWithCaption("sendPhoto", "photo", "img.jpg",
-                      "image/jpeg", "Your photo", chat_id, fb_length,
-                      isMoreDataAvailable, getNextByte, nullptr, nullptr);
-
-        Serial.println("done!");
-
-      } else {
-
-        Serial.println("\n>>>>> Sending, bytes=  " + String(fb_length));
-
-        bot.sendPhotoByBinary(chat_id, "image/jpeg", fb_length,
-                              isMoreDataAvailable, getNextByte,
-                              nullptr, nullptr);
-
-        dataAvailable = true;
-
-        Serial.println("done!");
+        bot.sendMessage(chat_id, stat, "");
       }
-      esp_camera_fb_return(fb);
-    }else if (text == "/clip") {
 
-      // record the video
-      bot.longPoll =  0;
-
-      xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
-      //xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 0);  //v8.5
-
-      if ( the_camera_loop_task == NULL ) {
-        //vTaskDelete( xHandle );
-        Serial.printf("do_the_steaming_task failed to start! %d\n", the_camera_loop_task);
+      if (text == "/reboot") {
+        reboot_request = true;
       }
-    }else if (text == "/start") {
-      String welcome = "ESP32Cam Telegram bot.\n\n";
-      welcome += "/photo: take a photo\n";
-      welcome += "/flash: toggle flash LED\n";
-      welcome += "/caption: photo with caption\n";
-      welcome += "/clip: short video clip\n";
-      welcome += "\n Configure the clip\n";
-      welcome += "/enavi: enable avi\n";
-      welcome += "/disavi: disable avi\n";
-      welcome += "\n/fast: 25 fps - 3  sec - play .5x speed\n";
-      welcome += "/med: 8  fps - 10 sec - play 1x speed\n";
-      welcome += "/slow: 2  fps - 40 sec - play 5x speed\n";
-      welcome += "\n/status: status\n";
-      welcome += "/reboot: reboot\n";
-      welcome += "/start: start\n";
-      bot.sendMessage(chat_id, welcome, "Markdown");
+      if (text == "/enavi") {
+        avi_enabled = true;
+      }
+
+      if (text == "/disavi") {
+        avi_enabled = false;
+      }
+
+      if (text == "/fast") {
+        max_frames = 50;
+        frame_interval = 0;
+        speed_up_factor = 0.5;
+        avi_enabled = true;
+      }
+
+      if (text == "/med") {
+        max_frames = 50;
+        frame_interval = 125;
+        speed_up_factor = 1;
+        avi_enabled = true;
+      }
+
+      if (text == "/slow") {
+        max_frames = 50;
+        frame_interval = 500;
+        speed_up_factor = 5;
+        avi_enabled = true;
+      }
+
+      for (int j = 0; j < 4; j++) {
+        camera_fb_t * newfb = esp_camera_fb_get();
+        if (!newfb) {
+          Serial.println("Camera Capture Failed");
+        } else {
+          esp_camera_fb_return(newfb);
+          delay(10);
+        }
+      }
+
+      if ( text == "/photo" || text == "/caption" ) {
+
+        fb = NULL;
+
+        // Take Picture with Camera
+        fb = esp_camera_fb_get();
+        if (!fb) {
+          Serial.println("Camera capture failed");
+          bot.sendMessage(chat_id, "Camera capture failed", "");
+          return;
+        }
+
+        currentByte = 0;
+        fb_length = fb->len;
+        fb_buffer = fb->buf;
+
+        if (text == "/caption") {
+
+          Serial.println("\n>>>>> Sending with a caption, bytes=  " + String(fb_length));
+
+          String sent = bot.sendMultipartFormDataToTelegramWithCaption("sendPhoto", "photo", "img.jpg",
+                        "image/jpeg", "Your photo", chat_id, fb_length,
+                        isMoreDataAvailable, getNextByte, nullptr, nullptr);
+
+          Serial.println("done!");
+
+        } else {
+
+          Serial.println("\n>>>>> Sending, bytes=  " + String(fb_length));
+
+          bot.sendPhotoByBinary(chat_id, "image/jpeg", fb_length,
+                                isMoreDataAvailable, getNextByte,
+                                nullptr, nullptr);
+
+          dataAvailable = true;
+
+          Serial.println("done!");
+        }
+        esp_camera_fb_return(fb);
+      }else if (text == "/clip") {
+
+        // record the video
+        bot.longPoll =  0;
+
+        xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
+        //xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 0);  //v8.5
+
+        if ( the_camera_loop_task == NULL ) {
+          //vTaskDelete( xHandle );
+          Serial.printf("do_the_steaming_task failed to start! %d\n", the_camera_loop_task);
+        }
+      }else if (text == "/start") {
+        String welcome = "ESP32Cam Telegram bot.\n\n";
+        welcome += "/photo: take a photo\n";
+        welcome += "/flash: toggle flash LED\n";
+        welcome += "/caption: photo with caption\n";
+        welcome += "/clip: short video clip\n";
+        welcome += "\n Configure the clip\n";
+        welcome += "/enavi: enable avi\n";
+        welcome += "/disavi: disable avi\n";
+        welcome += "\n/fast: 25 fps - 3  sec - play .5x speed\n";
+        welcome += "/med: 8  fps - 10 sec - play 1x speed\n";
+        welcome += "/slow: 2  fps - 40 sec - play 5x speed\n";
+        welcome += "\n/status: status\n";
+        welcome += "/reboot: reboot\n";
+        welcome += "/start: start\n";
+        bot.sendMessage(chat_id, welcome, "Markdown");
+      }
+    }else{
+      Serial.print("WARNING!!! Not authorized user tries to send command: ");
+      Serial.println(username);
     }
   }
 }

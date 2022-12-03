@@ -36,7 +36,7 @@ LPAvTK33sefOT6jEm0pUBsV/fdUID+Ic/n4XuKxe9tQWskMJDE32p2u0mYRlynqI
 #ifndef UniversalTelegramBot_h
 #define UniversalTelegramBot_h
 
-//#define TELEGRAM_DEBUG 0                      //jz
+//#define TELEGRAM_DEBUG 1                      //jz
 #define ARDUINOJSON_DECODE_UNICODE 1
 #define ARDUINOJSON_USE_LONG_LONG 1
 #include <Arduino.h>
@@ -56,6 +56,7 @@ typedef byte* (*GetNextBuffer)();
 typedef int (GetNextBufferLen)();
 
 struct telegramMessage {
+
   String text;
   String chat_id;
   String chat_title;
@@ -66,6 +67,8 @@ struct telegramMessage {
   String file_caption;
   String file_path;
   String file_name;
+  String username;
+
   bool hasDocument;
   long file_size;
   float longitude;
@@ -75,6 +78,7 @@ struct telegramMessage {
   int reply_to_message_id;
   String reply_to_text;
   String query_id;
+  
 };
 
 class UniversalTelegramBot {
@@ -145,7 +149,7 @@ public:
   telegramMessage messages[HANDLE_MESSAGES];
   long last_message_received;
   String name;
-  String userName;
+  String username;
   int longPoll = 0;
   int waitForResponse = 1500;
   int _lastError;
