@@ -17,11 +17,11 @@ has been adapted by @bitstuffing under CC 4.0
 You needs to write in configuration file (lib/core/configuration.h) and fill
 your SSID, PASSWORD, BOT_TOKEN and if you want your private Telegram CHAT_ID
 *******************************************************************/
-#include "Arduino.h"
 #include "core.cpp"
 
 /** SETUP **/
 void setup() {
+
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
   Serial.begin(115200);
   Serial.println("------------------------------------");
@@ -72,18 +72,43 @@ void setup() {
       delay(20);
     }
   }
-
-  if(init_wifi()){
-    bot.longPoll = 5; //Make the bot wait for a new message 5 seconds
-    client.setInsecure();
-    String stat = "Reboot\nDevice: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nIP: " +  WiFi.localIP().toString() + "\n/start";
-    bot.sendMessage(chat_id, stat, "");
-    avi_enabled = true;
-  }else{
-    Serial.println("sleeping to wait for network connection router...");
-    esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-    esp_deep_sleep_start();
+  if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
+      Serial.println("SPIFFS Mount Failed");
+      return;
   }
+
+  doc = getFileContent("/config.json");
+
+  ap_enabled = doc["configuration"]["wifi"]["ap"].as<bool>();
+  led_is_on = doc["configuration"]["led"].as<bool>();
+  flashState = doc["configuration"]["flash"].as<bool>() ? HIGH : LOW;
+  light = doc["configuration"]["flash"].as<bool>();
+  BOTtoken = doc["configuration"]["bottoken"].as<String>();
+  bot.updateToken(BOTtoken);
+
+  if(!ap_enabled) {
+  
+    if(init_wifi()){
+      bot.longPoll = 5; //Make the bot wait for a new message 5 seconds
+      client.setInsecure();
+      String stat = "Reboot\nDevice: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nIP: " +  WiFi.localIP().toString() + "\n/start";
+      bot.sendMessage(chat_id, stat, "");
+      avi_enabled = true;
+    }else{
+      Serial.println("sleeping to wait for network connection router...");
+      esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+      esp_deep_sleep_start();
+    }
+
+  }else{
+    String wifi_ssid = doc["configuration"]["wifi"]["bssid"].as<String>();
+    String wifi_password = doc["configuration"]["wifi"]["password"].as<String>();
+
+    initWifiAP(wifi_ssid,wifi_password); //warning, needs to reset ap mode
+    
+  }
+  initWebServer();
+  doc = NULL;
 }
 
 /** LOOP **/
@@ -99,14 +124,24 @@ void loop() {
   }
   if(sleep_mode){
     bot.sendMessage(chat_id, "Sleeping "+String(TIME_TO_SLEEP)+" seconds", "");
-    digitalWrite(33, LOW);
+    if(!led_is_on){
+      digitalWrite(33, LOW);
+    }
+
     esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
     esp_deep_sleep_start();
   }
 
   if (picture_ready) {
     picture_ready = false;
+    if(flashState == HIGH){
+      digitalWrite(FLASH_LED_PIN,HIGH);
+      delay(2000);
+    }
     sendPicture();
+    if(!light){
+      digitalWrite(FLASH_LED_PIN,LOW);
+    }
   }
 
   if (video_ready) {
@@ -114,33 +149,39 @@ void loop() {
     sendVideo();
   }
 
-  
   digitalWrite(33, led_is_on ? HIGH : LOW);
+  if(doc==NULL){
+    Serial.println("forcing opening config...");
+    doc = getFileContent("/config.json");
+  }
   
-  
-  if (millis() > bot_lasttime + BOT_MTBS )  {
+  ap_enabled = doc["configuration"]["wifi"]["ap"].as<bool>();
 
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("***** WiFi reconnect *****");
-      WiFi.reconnect();
-      delay(5000);
+  if(!ap_enabled) {
+
+    if (millis() > bot_lasttime + BOT_MTBS )  {
+
       if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("***** WiFi restart *****");
-        if(!init_wifi()){
-          Serial.println("sleeping to wait for network connection router...");
-          esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-          esp_deep_sleep_start();
+        Serial.println("***** WiFi reconnect *****");
+        WiFi.reconnect();
+        delay(5000);
+        if (WiFi.status() != WL_CONNECTED) {
+          Serial.println("***** WiFi restart *****");
+          if(!init_wifi()){
+            Serial.println("sleeping to wait for network connection router...");
+            esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+            esp_deep_sleep_start();
+          }
         }
       }
-    }
+      int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
 
-    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-
-    while (numNewMessages) {
-      handleNewMessages(numNewMessages);
-      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+      while (numNewMessages) {
+        handleNewMessages(numNewMessages);
+        numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+      }
+      bot_lasttime = millis();
     }
-    bot_lasttime = millis();
   }
   
   delay(500); //reasonable loop timeout
