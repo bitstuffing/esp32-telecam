@@ -1,7 +1,21 @@
 #include "core.h"
-#include <ESPmDNS.h>
 
-#include "utils.h"
+//wifi AP part
+IPAddress initWifiAP(String wifi_ssid,String wifi_password){  
+  //TODO extract default from default configuration constants to get always a password with right size
+  WiFi.softAP(wifi_ssid.c_str(), wifi_password.c_str());
+  
+  Serial.print("wifi ssid: ");
+  Serial.print(wifi_ssid);
+  Serial.print(", password: ");
+  Serial.println(wifi_password);
+
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(IP);
+
+  return IP;
+}
 
 /*
 * Take a picture and make sure it has a good jpeg
@@ -61,7 +75,10 @@ camera_fb_t* get_good_jpeg() {
 }
 
 void the_camera_loop (void* pvParameter) {
-
+  if(flashState == HIGH){
+    digitalWrite(FLASH_LED_PIN, flashState);
+  }
+  
   vid_fb = get_good_jpeg(); // esp_camera_fb_get();
   if (!vid_fb) {
     Serial.println("Camera capture failed");
@@ -80,6 +97,7 @@ void the_camera_loop (void* pvParameter) {
 
     fb_next = get_good_jpeg(); // should take zero time
     last_frame_time = millis();
+
     start_avi();
 
     // all the frames of movie
@@ -116,13 +134,17 @@ void the_camera_loop (void* pvParameter) {
     esp_camera_fb_return(fb_curr);
     fb_curr = NULL;
     end_avi();                                // end the movie
-    digitalWrite(33, HIGH);          // light off
+
     avi_end_time = millis();
     float fps = 1.0 * frame_cnt / ((avi_end_time - avi_start_time) / 1000) ;
     Serial.printf("End the avi at %d.  It was %d frames, %d ms at %.2f fps...\n", millis(), frame_cnt, avi_end_time - avi_start_time, fps);
     frame_cnt = 0;             // start recording again on the next loop
     video_ready = true;
   }
+  if(!light){
+    digitalWrite(FLASH_LED_PIN, LOW); //always reset flash
+  }
+
   Serial.println("Deleting the camera task");
   delay(100);
   //vTaskDelete(the_camera_loop_task);
@@ -338,8 +360,8 @@ void handleNewMessages(int numNewMessages) {
       Serial.println(" is authorized, continue...");
 
       if (text == "/flash") {
-        flashState = !flashState;
-        digitalWrite(FLASH_LED_PIN, flashState);
+        flashState = flashState == HIGH ? LOW : HIGH;
+        //TODO write status changed
       }
 
       if (text == "/status") {
@@ -406,8 +428,13 @@ void handleNewMessages(int numNewMessages) {
 
         fb = NULL;
 
+        if(flashState == HIGH){
+          digitalWrite(FLASH_LED_PIN, flashState);
+        }
+
         // Take Picture with Camera
         fb = esp_camera_fb_get();
+
         if (!fb) {
           Serial.println("Camera capture failed");
           bot.sendMessage(chat_id, "Camera capture failed", "");
@@ -417,6 +444,11 @@ void handleNewMessages(int numNewMessages) {
         currentByte = 0;
         fb_length = fb->len;
         fb_buffer = fb->buf;
+
+        if(!light){
+          delay(2000);
+          digitalWrite(FLASH_LED_PIN, LOW); //always reset flash
+        }
 
         if (text == "/caption") {
 
@@ -540,23 +572,43 @@ bool setupCamera() {
 bool init_wifi() {
   uint32_t brown_reg_temp = READ_PERI_REG(RTC_CNTL_BROWN_OUT_REG);
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
-  // Attempt to connect to Wifi network:
-  Serial.print("Connecting Wifi: ");
-  Serial.println(ssid);
 
-  // Set WiFi to station mode and disconnect from an AP if it was Previously connected
-  devstr.toCharArray(devname, devstr.length() + 1); // name of your camera for mDNS, Router, and filenames
-  WiFi.mode(WIFI_STA);
-  WiFi.setHostname(devname);
-  WiFi.begin(ssid, password);
+  if (SPIFFS.exists("/config.json")){
 
-  int retries = 0;
+    Serial.println("opening config.json");
 
-  while (retries < LIMIT_RETRIES && WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-    retries++;
-  }
+    doc = getFileContent("/config.json");
+
+    //if configuration exists try to connect
+    if(doc.containsKey("configuration")){
+      Serial.println("reading wifi...");
+      String ssid = doc["configuration"]["wifi"]["bssid"].as<String>();;
+      String password = doc["configuration"]["wifi"]["password"].as<String>();;
+
+      // Attempt to connect to Wifi network:
+      Serial.print("Connecting Wifi: ");
+      Serial.print(ssid);
+      Serial.print(", pass: ");
+      Serial.println(password);
+
+      // Set WiFi to station mode and disconnect from an AP if it was Previously connected
+      devstr.toCharArray(devname, devstr.length() + 1); // name of your camera for mDNS, Router, and filenames
+      WiFi.mode(WIFI_STA);
+      WiFi.setHostname(devname);
+      WiFi.begin(ssid.c_str(), password.c_str());
+
+      int retries = 0;
+
+      while (retries < LIMIT_RETRIES && WiFi.status() != WL_CONNECTED) {
+        Serial.print(".");
+        delay(500);
+        retries++;
+      }
+
+    }
+  }else{
+    Serial.println("FAIL opening config.json");
+  }  
 
   if(WiFi.status() == WL_CONNECTED){ //ntp
     //TODO check with esp_err_t set_ps = returned value, esp_err_t and sys.exit(-1) code
@@ -588,7 +640,6 @@ bool init_wifi() {
 }
 
 void sendPicture() {
-  digitalWrite(33, LOW); // back light on
   currentByte = 0;
   fb_length = vid_fb->len;
   fb_buffer = vid_fb->buf;
@@ -600,12 +651,10 @@ void sendPicture() {
                   isMoreDataAvailable, getNextByte, nullptr, nullptr);
   esp_camera_fb_return(vid_fb);
   bot.longPoll =  0;
-  digitalWrite(33, HIGH); // back light off
   if (!avi_enabled) active_interupt = false;
 }
 
 void sendVideo() {
-  digitalWrite(33, LOW); // back light on
   Serial.println("\n\n\nSending clip with caption");
   Serial.println("\n>>>>> Sending as 512 byte blocks, with a caption, and with jzdelay of 0, bytes=  " + String(psram_avi_ptr - psram_avi_buf));
   avi_buf = psram_avi_buf;
@@ -618,8 +667,138 @@ void sendVideo() {
                  avi_more, avi_next, nullptr, nullptr);
 
   Serial.println("done!");
-  digitalWrite(33, HIGH); // back light off
 
   bot.longPoll = 5;
   active_interupt = false;
+}
+
+
+//FILE SYSTEM FUNCTIONS
+bool saveConnection(AsyncWebServerRequest *request){
+  if(request->hasArg("wifiSSID") && request->hasArg("wifiPassword")){
+    File configFile = SPIFFS.open("/config.json", FILE_WRITE);
+    if (!configFile) {
+      Serial.println("Failed to open config file in write mode");
+      return false;
+    }
+    //build json document
+    DynamicJsonDocument doc(2000);
+    doc["configuration"]["wifi"]["ssid"] = request->arg("wifiSSID");
+    doc["configuration"]["wifi"]["password"] = request->arg("wifiPassword");
+    //now store
+    Serial.println("writting to file...");
+    if (serializeJson(doc, configFile) == 0) {
+      Serial.println("Failed to parse config file");
+      return false;
+    }
+    Serial.println("done!");
+    configFile.close();
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  }
+  return true;
+}
+
+void initWebServer(){
+  //Route for root / web page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
+  server.on("^/([a-zA-z0-9-_.]+)?\\.js$", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      String url = request->url();
+      Serial.println(url);
+      request->send(SPIFFS, url, "text/javascript");
+  });
+  server.on("^/([a-zA-z0-9-_.]+)?\\.css$", HTTP_GET, [](AsyncWebServerRequest *request){
+    String url = request->url();
+    Serial.println(url);
+    request->send(SPIFFS, url, "text/css");
+  });
+  server.on("/connect", HTTP_POST, [](AsyncWebServerRequest *request){
+    saveConnection(request);
+    connectWifi(request);
+  });
+  server.on("/connect", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/connect.html", String(), false, processor);
+  });
+  // Start server
+  server.begin();
+}
+
+StaticJsonDocument<2000> getFileContent(String filename){
+  StaticJsonDocument<2000> doc;
+  File configFile = SPIFFS.open(filename, "r");
+  if (!configFile) {
+    Serial.println("Failed to open config file");
+    
+  }
+  size_t size = configFile.size();
+  if (size > 1024) {
+    Serial.println("Config file size is too large"); //ups ;) 
+    
+  }
+  // Allocate a buffer to store contents of the file.
+  std::unique_ptr<char[]> buf(new char[size]);
+  // We don't use String here because ArduinoJson library requires the input
+  // buffer to be mutable. 
+  configFile.readBytes(buf.get(), size);
+  auto error = deserializeJson(doc, buf.get());
+  //deserializeJson(doc, ZERO_COPY(buf.get()));
+  if (error) {
+    Serial.println("Failed to parse config file");
+    Serial.println(error.f_str());
+    
+  }
+  configFile.close();
+  return doc;
+}
+
+bool connectWifi(AsyncWebServerRequest *request){
+  if (SPIFFS.exists("/config.json")){
+      doc = getFileContent("/config.json");
+
+      //if configuration exists try to connect
+      if(doc.containsKey("wifi")){
+        String wifi_ssid = doc["configuration"]["wifi"]["bssid"].as<String>();
+        String wifi_password = doc["configuration"]["wifi"]["password"].as<String>();
+
+        bool ap = doc["configuration"]["wifi"]["ap"];
+
+        if(ap){
+          initWifiAP(wifi_ssid,wifi_password); //warning, needs to reset ap mode
+        }else{
+          //Connect to Wi-Fi
+          WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
+          int counter = 0;
+          while (counter++<LIMIT_RETRIES && WiFi.status() != WL_CONNECTED) {
+            delay(500);
+            Serial.println("Connecting to WiFi..");
+          }
+          if(counter++<LIMIT_RETRIES){
+            //(debug) print ESP32 Local IP Address
+            Serial.println(WiFi.localIP());
+          }else{
+            Serial.print("Fail to connect. Reset AP...");
+            initWifiAP(wifi_ssid,wifi_password); //warning, needs to reset ap mode
+            Serial.println(" done!");
+          }
+        }
+        
+      } else{
+        Serial.println("No wifi data");
+      }
+    }else if(request){
+      request->send(SPIFFS, "/connect.html", String(), false, processor);
+      return false;
+    }
+    return true;
+}
+
+String processor(const String& var){
+  Serial.println(var);
+  if (var == "IP_ADDRESS" ) {
+    Serial.println(WiFi.localIP());
+    IPAddress address = WiFi.localIP();
+    return String() + address[0] + "." + address[1] + "." + address[2] + "." + address[3];
+  }
+  return String();
 }

@@ -1,18 +1,24 @@
 #include "Arduino.h"
-#include "esp_camera.h"
 
+#include <ArduinoJson.h>
+
+#include "esp_camera.h"
 #include "esp_wifi.h"
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 #include "esp_system.h"
 
-#include <ArduinoJson.h>
-
+#include <ESPmDNS.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
-// use local library which is a modified copy of an old version
+
+#include "FS.h"
+#include "SPIFFS.h"
+#include "ESPAsyncWebServer.h"
+
 #include "UniversalTelegramBot.h"
 #include "configuration.h"
+#include "utils.h"
 
 bool reboot_request = false;
 bool sleep_mode = false;
@@ -36,6 +42,8 @@ bool sleep_mode = false;
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
+#define FORMAT_SPIFFS_IF_FAILED true
+
 // change timezone with https://sites.google.com/a/usapiens.com/opnode/time-zones
 String TIMEZONE = "CET-1CEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00";
 
@@ -43,6 +51,7 @@ static const char vernum[] = "esp32-cam telegram 0.2";
 String devstr =  "ESP32-TeleCam";
 framesize_t configframesize = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
 
+String BOTtoken;
 WiFiClientSecure client;
 UniversalTelegramBot bot(BOTtoken, client);
 
@@ -56,14 +65,14 @@ float speed_up_factor = 0.5; // 1 = play at realtime, 0.5 = slow motion, 10 = sp
 
 long bot_lasttime;   //last time messages' scan has been done
 
-bool flashState = LOW;
-
 camera_fb_t * fb = NULL;
 camera_fb_t * vid_fb = NULL;
 
-TaskHandle_t the_camera_loop_task;
-void the_camera_loop (void* pvParameter) ;
+RTC_DATA_ATTR int bootCount = 0;
 
+bool flashState = LOW;
+bool light = false;
+bool ap_enabled = true;
 bool led_is_on = true;
 bool video_ready = false;
 bool picture_ready = false;
@@ -233,7 +242,17 @@ uint8_t * psram_avi_ptr = 0;
 uint8_t * psram_idx_ptr = 0;
 char strftime_buf[64];
 
+AsyncWebServer server(80);
+
+TaskHandle_t the_camera_loop_task;
+
+StaticJsonDocument<2000> doc;
+
 /** FUNTIONS - PROTOTYPES **/
+void the_camera_loop (void* pvParameter) ;
+
+IPAddress initWifiAP(const char* wifi_ssid,const char* wifi_password);
+bool init_wifi();
 
 void start_avi();
 void another_save_avi(camera_fb_t * fb );
@@ -244,3 +263,11 @@ void handleNewMessages(int numNewMessages);
 
 void sendPicture();
 void sendVideo();
+
+bool saveConnection(AsyncWebServerRequest *request);
+void initWebServer();
+
+StaticJsonDocument<2000> getFileContent(String filename);
+
+bool connectWifi(AsyncWebServerRequest *request);
+String processor(const String& var);

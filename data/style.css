@@ -1,0 +1,56 @@
+html {
+    font-family: Arial;
+    display: inline-block;
+    margin: 0px auto;
+    text-align: center;
+  }
+  h1{
+    color: #070812;
+    padding: 2vh;
+  }
+  .button {
+    display: inline-block;
+    background-color: #b30000; 
+    border: none;
+    border-radius: 4px;
+    color: rgb(224, 224, 224);
+    padding: 16px 40px;
+    text-decoration: none;
+    font-size: 30px;
+    margin: 2px;
+    cursor: pointer;
+  }
+  .button2 {
+    background-color: #364cf4; 
+  }
+  .content { 
+    padding: 50px;
+  }
+  .card-grid {
+    max-width: 800px;
+    margin: 0 auto;
+    display: grid;
+    grid-gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  .card {
+    background-color: rgb(224, 224, 224);
+    box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+  }
+  .card-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #034078
+  }
+
+.red-background{
+    background-color: rgb(0, 204, 255);
+}
+
+.sidebar li .submenu{ 
+	list-style: none; 
+	margin: 0; 
+	padding: 0; 
+	padding-left: 1rem; 
+	padding-right: 1rem;
+}

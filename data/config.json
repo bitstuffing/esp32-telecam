@@ -1,0 +1,32 @@
+{
+	"dashboard": {
+        "users" : [{
+            "isAdmin" : true,
+            "username": "admin",
+		    "password": "12345678"
+        }]
+	},
+    "configuration": {
+        "bottoken" : "0000000000:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+        "authUsers" : [
+            "username"
+        ],
+        "wifi": {
+            "ap": true,
+            "bssid": "ESP32-TeleCam-AP",
+            "password": "12345678"
+        },
+        "networking":{
+            "dhcp-client" : true,
+            "ip": "192.168.4.1",
+            "netmask": "255.255.255.0",
+            "dns": [
+                "1.1.1.1",
+                "8.8.8.8"
+            ]
+        },
+        "led" : true,
+        "flash": false,
+        "light": true
+    }
+}
