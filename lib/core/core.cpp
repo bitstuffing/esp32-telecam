@@ -703,11 +703,15 @@ void initWebServer(){
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
-  server.on("/*.js", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/style.js", "text/javascript");
+  server.on("^/([a-zA-z0-9-_.]+)?\\.js$", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      String url = request->url();
+      Serial.println(url);
+      request->send(SPIFFS, url, "text/javascript");
   });
-  server.on("/*.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/style.css", "text/css");
+  server.on("^/([a-zA-z0-9-_.]+)?\\.css$", HTTP_GET, [](AsyncWebServerRequest *request){
+    String url = request->url();
+    Serial.println(url);
+    request->send(SPIFFS, url, "text/css");
   });
   server.on("/connect", HTTP_POST, [](AsyncWebServerRequest *request){
     saveConnection(request);
