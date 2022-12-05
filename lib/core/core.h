@@ -17,7 +17,6 @@
 #include "ESPAsyncWebServer.h"
 
 #include "UniversalTelegramBot.h"
-#include "configuration.h"
 #include "utils.h"
 
 bool reboot_request = false;
@@ -69,6 +68,9 @@ camera_fb_t * fb = NULL;
 camera_fb_t * vid_fb = NULL;
 
 RTC_DATA_ATTR int bootCount = 0;
+
+char** authUsers;
+String chat_id = "99999"; //TODO introduce this in configuration file
 
 bool flashState = LOW;
 bool light = false;
@@ -268,6 +270,6 @@ bool saveConnection(AsyncWebServerRequest *request);
 void initWebServer();
 
 StaticJsonDocument<2000> getFileContent(String filename);
-
+void fillAuthUsers(JsonArray result);
 bool connectWifi(AsyncWebServerRequest *request);
 String processor(const String& var);

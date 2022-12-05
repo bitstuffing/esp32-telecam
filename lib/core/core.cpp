@@ -587,9 +587,7 @@ bool init_wifi() {
 
       // Attempt to connect to Wifi network:
       Serial.print("Connecting Wifi: ");
-      Serial.print(ssid);
-      Serial.print(", pass: ");
-      Serial.println(password);
+      Serial.println(ssid);
 
       // Set WiFi to station mode and disconnect from an AP if it was Previously connected
       devstr.toCharArray(devname, devstr.length() + 1); // name of your camera for mDNS, Router, and filenames
@@ -750,6 +748,16 @@ StaticJsonDocument<2000> getFileContent(String filename){
   }
   configFile.close();
   return doc;
+}
+
+void fillAuthUsers(JsonArray result){
+  int count = result.size();
+  authUsers = (char**)malloc(count * sizeof(char*));
+  for(int i=0;i<count;i++){
+    const char* element = result[i].as<const char*>();
+    authUsers[i] = (char*) malloc(sizeof(element));
+    authUsers[i] = (char*) element;
+  }
 }
 
 bool connectWifi(AsyncWebServerRequest *request){

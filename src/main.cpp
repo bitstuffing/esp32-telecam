@@ -78,7 +78,8 @@ void setup() {
   }
 
   doc = getFileContent("/config.json");
-
+  
+  //fill params from config
   ap_enabled = doc["configuration"]["wifi"]["ap"].as<bool>();
   led_is_on = doc["configuration"]["led"].as<bool>();
   flashState = doc["configuration"]["flash"].as<bool>() ? HIGH : LOW;
@@ -86,8 +87,13 @@ void setup() {
   BOTtoken = doc["configuration"]["bottoken"].as<String>();
   bot.updateToken(BOTtoken);
 
+  //fill auth users from config
+  JsonArray result = doc["configuration"]["authUsers"];
+  fillAuthUsers(result);
+
   if(!ap_enabled) {
-  
+    
+
     if(init_wifi()){
       bot.longPoll = 5; //Make the bot wait for a new message 5 seconds
       client.setInsecure();
