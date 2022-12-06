@@ -345,10 +345,10 @@ void handleNewMessages(int numNewMessages) {
     client.setHandshakeTimeout(120000);
 
     boolean auth = false;
-    if(authUsers!=NULL){
+    if(authUsers!=nullptr){
       for(int i=0;!auth && i<NUM_ITEMS(authUsers);i++){
         String target = authUsers[i];
-        auth = target != NULL && target == username;
+        auth = target != nullptr && target == username;
       }
     }
 
@@ -471,8 +471,8 @@ void handleNewMessages(int numNewMessages) {
       }else if (text == "/clip") {
         // record the video
         bot.longPoll =  0;
-        xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
-        if ( the_camera_loop_task == NULL ) {
+        xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, nullptr, 1, &the_camera_loop_task, 1);
+        if ( the_camera_loop_task == nullptr ) {
           //vTaskDelete( xHandle );
           Serial.printf("do_the_steaming_task failed to start! %d\n", the_camera_loop_task);
         }
@@ -673,9 +673,10 @@ bool saveConnection(AsyncWebServerRequest *request){
       return false;
     }
     //build json document
-    DynamicJsonDocument doc(2000);
-    doc["configuration"]["wifi"]["ssid"] = request->arg("wifiSSID");
+    StaticJsonDocument<2000> doc = getFileContent("/config.json");
+    doc["configuration"]["wifi"]["bssid"] = request->arg("wifiSSID");
     doc["configuration"]["wifi"]["password"] = request->arg("wifiPassword");
+    doc["configuration"]["wifi"]["ap"] = request->arg("wifiClient") == "true";
     //now store
     Serial.println("writting to file...");
     if (serializeJson(doc, configFile) == 0) {
@@ -684,7 +685,12 @@ bool saveConnection(AsyncWebServerRequest *request){
     }
     Serial.println("done!");
     configFile.close();
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+
+    StaticJsonDocument<100> data;
+    data["result"] = "ok";
+    String response;
+    serializeJson(data, response);
+    request->send(200, "application/json", response);
   }
   return true;
 }
@@ -701,16 +707,17 @@ void initWebServer(){
   }).setAuthentication("user", "pass"); //TODO read from config
   server.on("/connect", HTTP_POST, [](AsyncWebServerRequest *request){
     saveConnection(request);
-    connectWifi(request);
+    //connectWifi(request);
+    ESP.restart();
   });
-  server.on("/connect", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/connect.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/www/connect.html", String(), false, processor);
   });
-  // Start server
   //server.serveStatic("/", SPIFFS, "/www");
   server.on("^/([a-zA-z0-9-_.]+)?\\.js$", HTTP_GET, downloadPage);
   server.on("^/([a-zA-z0-9-_.]+)?\\.css$", HTTP_GET, downloadPage);
   server.on("^/([a-zA-z0-9-_.]+)?\\.html$", HTTP_GET, downloadPage);
+  // Start server
   server.begin();
 }
 

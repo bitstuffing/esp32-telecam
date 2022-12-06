@@ -6,17 +6,23 @@
         <div class="mb-3 row">
             <label for="wifiSSID" class="col-sm-2 col-form-label">Wifi SSID</label>
             <div class="col-sm-10">
-                <input type="text" class="form-control-plaintext" id="wifiSSID" name="wifiSSID" >
+                <input type="text" class="form-control-plaintext" id="wifiSSID" name="wifiSSID" />
             </div>
         </div>
         <div class="mb-3 row">
             <label for="wifiPassword" class="col-sm-2 col-form-label">Wifi Password</label>
             <div class="col-sm-10">
-                <input type="password" class="form-control" id="wifiPassword" name="wifiPassword" >
+                <input type="password" class="form-control" id="wifiPassword" name="wifiPassword" />
             </div>
         </div>
         <div class="mb-3 row">
-            <button type="submit" class="btn btn-primary mb-3">Save and connect</button>
+            <label for="wifiAPBox" class="col-sm-2 col-form-label">Wifi AP</label>
+            <div class="col-sm-10">
+                <input type="checkbox" class="form-control" id="wifiAPBox" name="wifiAPBox" />
+            </div>
+        </div>
+        <div class="mb-3 row">
+            <button id="connectButton" type="button" class="btn btn-primary mb-3">Save and connect</button>
         </div>
     </form>
 </div>

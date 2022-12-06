@@ -1,6 +1,7 @@
 #include "Arduino.h"
 
 #include <ArduinoJson.h>
+#include "AsyncJson.h"
 
 #include "esp_camera.h"
 #include "esp_wifi.h"

@@ -134,7 +134,7 @@ void loop_events(){
     esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
     esp_deep_sleep_start();
   }
-  digitalWrite(FLASH_LED_PIN,light?HIGH:LOW);
+  digitalWrite(FLASH_LED_PIN, light ? HIGH : LOW);
 
   if (picture_ready) {
     picture_ready = false;
@@ -187,8 +187,7 @@ void loop() {
 
   loop_events();
 
-  if(nullptr == doc || !doc["configuration"]["wifi"]["ap"]){
-    Serial.println("forcing opening config...");
+  if(nullptr == doc || nullptr == doc["configuration"]["wifi"]["ap"]){
     doc = getFileContent("/config.json");
   }
 

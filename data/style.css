@@ -13,7 +13,7 @@ html {
     background-color: #b30000; 
     border: none;
     border-radius: 4px;
-    color: rgb(224, 224, 224);
+    color: white;
     padding: 16px 40px;
     text-decoration: none;
     font-size: 30px;
@@ -34,7 +34,7 @@ html {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
   .card {
-    background-color: rgb(224, 224, 224);
+    background-color: white;
     box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
   }
   .card-title {
@@ -44,20 +44,5 @@ html {
   }
 
 .red-background{
-    background-color: rgb(0, 204, 255);
-}
-
-.sidebar li .submenu{ 
-	list-style: none; 
-	margin: 0; 
-	padding: 0; 
-	padding-left: 1rem; 
-	padding-right: 1rem;
-}
-.home-menu{
-  transition: 0.3s;
-}
-.home-menu:hover{
-  background-color: #3e8e41;
-  color: white;
+    background-color: red;
 }
