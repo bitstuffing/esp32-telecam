@@ -68,6 +68,7 @@ camera_fb_t * fb = NULL;
 camera_fb_t * vid_fb = NULL;
 
 RTC_DATA_ATTR int bootCount = 0;
+boolean exec_ota_flag = false;
 
 char** authUsers;
 String chat_id = "99999"; //TODO introduce this in configuration file
@@ -245,12 +246,15 @@ uint8_t * psram_idx_ptr = 0;
 char strftime_buf[64];
 
 AsyncWebServer server(80);
+static AsyncWebServerRequest* deferredRequest = nullptr;
 
 TaskHandle_t the_camera_loop_task;
 
 StaticJsonDocument<2000> doc;
 
 /** FUNTIONS - PROTOTYPES **/
+static void downloadPage(AsyncWebServerRequest* request);
+
 void the_camera_loop (void* pvParameter) ;
 
 IPAddress initWifiAP(const char* wifi_ssid,const char* wifi_password);

@@ -129,14 +129,15 @@ void loop() {
     ESP.restart();
   }
   if(sleep_mode){
+    digitalWrite(FLASH_LED_PIN,LOW); //always turn off light (preserve batteries / low power consumption)
     bot.sendMessage(chat_id, "Sleeping "+String(TIME_TO_SLEEP)+" seconds", "");
     if(!led_is_on){
       digitalWrite(33, LOW);
     }
-
     esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
     esp_deep_sleep_start();
   }
+  digitalWrite(FLASH_LED_PIN,light?HIGH:LOW);
 
   if (picture_ready) {
     picture_ready = false;
@@ -154,19 +155,25 @@ void loop() {
     video_ready = false;
     sendVideo();
   }
-
+  
   digitalWrite(33, led_is_on ? HIGH : LOW);
-  if(doc==NULL){
+
+  if(doc==NULL || !doc["configuration"]["wifi"]["ap"]){
     Serial.println("forcing opening config...");
     doc = getFileContent("/config.json");
   }
-  
+
   ap_enabled = doc["configuration"]["wifi"]["ap"].as<bool>();
 
+  if (nullptr != deferredRequest){
+    deferredRequest->send(SPIFFS, "/www"+deferredRequest->url(), String(), true);
+    deferredRequest = nullptr;
+  }
+  
   if(!ap_enabled) {
 
     if (millis() > bot_lasttime + BOT_MTBS )  {
-
+      Serial.println("timeout!");
       if (WiFi.status() != WL_CONNECTED) {
         Serial.println("***** WiFi reconnect *****");
         WiFi.reconnect();

@@ -359,6 +359,10 @@ void handleNewMessages(int numNewMessages) {
       Serial.print(username);
       Serial.println(" is authorized, continue...");
 
+      if (text == "/light"){
+        light = !light;
+      }
+
       if (text == "/flash") {
         flashState = flashState == HIGH ? LOW : HIGH;
         //TODO write status changed
@@ -487,7 +491,8 @@ void handleNewMessages(int numNewMessages) {
       }else if (text == "/start") {
         String welcome = "ESP32Cam Telegram bot.\n\n";
         welcome += "/photo: take a photo\n";
-        welcome += "/flash: toggle flash LED\n";
+        welcome += "/light: toggle LED light status\n";
+        welcome += "/flash: toggle flash in photo/video\n";
         welcome += "/caption: photo with caption\n";
         welcome += "/clip: short video clip\n";
         welcome += "\n Configure the clip\n";
@@ -699,27 +704,30 @@ bool saveConnection(AsyncWebServerRequest *request){
 void initWebServer(){
   //Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+    request->send(SPIFFS, "/www/index.html", String(), false, processor);
   });
-  server.on("^/([a-zA-z0-9-_.]+)?\\.js$", HTTP_GET, [] (AsyncWebServerRequest *request) {
+  server.on("^/([a-zA-z0-9-_.]+)?\\.json$", HTTP_GET, [] (AsyncWebServerRequest *request) {
       String url = request->url();
       Serial.println(url);
       request->send(SPIFFS, url, "text/javascript");
-  });
-  server.on("^/([a-zA-z0-9-_.]+)?\\.css$", HTTP_GET, [](AsyncWebServerRequest *request){
-    String url = request->url();
-    Serial.println(url);
-    request->send(SPIFFS, url, "text/css");
-  });
+  }).setAuthentication("user", "pass"); //TODO read from config
   server.on("/connect", HTTP_POST, [](AsyncWebServerRequest *request){
     saveConnection(request);
     connectWifi(request);
   });
   server.on("/connect", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/connect.html", String(), false, processor);
+    request->send(SPIFFS, "/www/connect.html", String(), false, processor);
   });
   // Start server
+  //server.serveStatic("/", SPIFFS, "/www");
+  server.on("^/([a-zA-z0-9-_.]+)?\\.js$", HTTP_GET, downloadPage);
+  server.on("^/([a-zA-z0-9-_.]+)?\\.css$", HTTP_GET, downloadPage);
+  server.on("^/([a-zA-z0-9-_.]+)?\\.html$", HTTP_GET, downloadPage);
   server.begin();
+}
+
+static void downloadPage(AsyncWebServerRequest* request){
+    deferredRequest = request;
 }
 
 StaticJsonDocument<2000> getFileContent(String filename){
@@ -769,9 +777,9 @@ bool connectWifi(AsyncWebServerRequest *request){
         String wifi_ssid = doc["configuration"]["wifi"]["bssid"].as<String>();
         String wifi_password = doc["configuration"]["wifi"]["password"].as<String>();
 
-        bool ap = doc["configuration"]["wifi"]["ap"];
+        ap_enabled = doc["configuration"]["wifi"]["ap"].as<bool>();
 
-        if(ap){
+        if(ap_enabled){
           initWifiAP(wifi_ssid,wifi_password); //warning, needs to reset ap mode
         }else{
           //Connect to Wi-Fi
