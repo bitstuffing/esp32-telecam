@@ -2,47 +2,66 @@
     <head>
         <title>ESP32 TeleCam 0.2</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" type="text/css" href="/all.css">
         <link rel="stylesheet" type="text/css" href="/bootstrap.min.css">
         <link rel="stylesheet" type="text/css" href="/style.css">
     </head>
     <body>
 
-        <nav class="sidebar card py-2 mb-4">
-            <ul class="nav flex-column" id="nav_accordion">
-                <li class="nav-item">
-                    <a class="nav-link" href="#"> Link name </a>
-                </li>
-                <li class="nav-item has-submenu">
-                    <a class="nav-link" href="#"> Submenu links  </a>
-                    <ul class="submenu collapse">
-                        <li><a class="nav-link" href="#">Submenu item 1 </a></li>
-                        <li><a class="nav-link" href="#">Submenu item 2 </a></li>
-                        <li><a class="nav-link" href="#">Submenu item 3 </a> </li>
-                    </ul>
-                </li>
-                <li class="nav-item has-submenu">
-                    <a class="nav-link" href="#"> More menus  </a>
-                    <ul class="submenu collapse">
-                        <li><a class="nav-link" href="#">Submenu item 4 </a></li>
-                        <li><a class="nav-link" href="#">Submenu item 5 </a></li>
-                        <li><a class="nav-link" href="#">Submenu item 6 </a></li>
-                        <li><a class="nav-link" href="#">Submenu item 7 </a></li>
-                    </ul>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#"> Something </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#"> Other link </a>
-                </li>
-            </ul>
-        </nav>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-auto bg-light sticky-top">
+                    <div class="d-flex flex-sm-column flex-row flex-nowrap bg-light align-items-center sticky-top">
+                        <a href="/" class="d-block p-3 link-dark text-decoration-none" title="" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-original-title="Icon-only">
+                            <i class="bi bi-bootstrap"></i>
+                        </a>
+                        <ul class="nav nav-pills nav-flush flex-sm-column flex-row flex-nowrap mb-auto mx-auto text-center align-items-center">
+                            <li class="nav-item">
+                                <a href="#" class="nav-link py-3 px-2" title="" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-original-title="Home">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-house" viewBox="0 0 16 16">
+                                        <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L2 8.207V13.5A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V8.207l.646.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.707 1.5ZM13 7.207V13.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V7.207l5-5 5 5Z"/>
+                                    </svg>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="nav-link py-3 px-2" title="" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-original-title="Dashboard">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-router" viewBox="0 0 16 16">
+                                        <path d="M5.525 3.025a3.5 3.5 0 0 1 4.95 0 .5.5 0 1 0 .707-.707 4.5 4.5 0 0 0-6.364 0 .5.5 0 0 0 .707.707Z"/>
+                                        <path d="M6.94 4.44a1.5 1.5 0 0 1 2.12 0 .5.5 0 0 0 .708-.708 2.5 2.5 0 0 0-3.536 0 .5.5 0 0 0 .707.707ZM2.5 11a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Zm4.5-.5a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0Zm2.5.5a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Zm1.5-.5a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0Zm2 0a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0Z"/>
+                                        <path d="M2.974 2.342a.5.5 0 1 0-.948.316L3.806 8H1.5A1.5 1.5 0 0 0 0 9.5v2A1.5 1.5 0 0 0 1.5 13H2a.5.5 0 0 0 .5.5h2A.5.5 0 0 0 5 13h6a.5.5 0 0 0 .5.5h2a.5.5 0 0 0 .5-.5h.5a1.5 1.5 0 0 0 1.5-1.5v-2A1.5 1.5 0 0 0 14.5 8h-2.306l1.78-5.342a.5.5 0 1 0-.948-.316L11.14 8H4.86L2.974 2.342ZM14.5 9a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 1 .5-.5h13Z"/>
+                                        <path d="M8.5 5.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Z"/>
+                                    </svg>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="nav-link py-3 px-2" title="" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-original-title="Orders">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sliders" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3h9.05zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8h2.05zm9.45 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1h9.05z"/>
+                                    </svg>
+                                </a>
+                            </li>
+                        </ul>
+                        <div class="dropdown">
+                            <a href="#" class="d-flex align-items-center justify-content-center p-3 link-dark text-decoration-none dropdown-toggle" id="dropdownUser3" data-bs-toggle="dropdown" aria-expanded="false">
+                                User
+                            </a>
+                            <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownUser3">
+                                <li><a class="dropdown-item" href="#">Settings</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm p-3 min-vh-100">
+                    <!-- content -->
+                    
+                    <div class="container-xxl">
+                        <p class="red-background">ESP32 TeleCam 0.2</p>
+                        <p>Local IP: <strong>%IP_ADDRESS%</strong></p>
+                    </div>
 
-        <div class="container-xxl">
-            <p class="red-background">ESP32 TeleCam 0.2</p>
-            <p>Local IP: <strong>%IP_ADDRESS%</strong></p>
+                </div>
+            </div>
         </div>
+
 
         <script type="text/javascript" src="/jquery-3.6.1.min.js" ></script>
         <script type="text/javascript" src="/bootstrap.bundle.min.js" ></script>

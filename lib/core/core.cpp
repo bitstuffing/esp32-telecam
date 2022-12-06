@@ -2,7 +2,6 @@
 
 //wifi AP part
 IPAddress initWifiAP(String wifi_ssid,String wifi_password){  
-  //TODO extract default from default configuration constants to get always a password with right size
   WiFi.softAP(wifi_ssid.c_str(), wifi_password.c_str());
   
   Serial.print("wifi ssid: ");
@@ -82,7 +81,6 @@ void the_camera_loop (void* pvParameter) {
   vid_fb = get_good_jpeg(); // esp_camera_fb_get();
   if (!vid_fb) {
     Serial.println("Camera capture failed");
-    //bot.sendMessage(chat_id, "Camera capture failed", "");
     return;
   }
   picture_ready = true;
@@ -118,7 +116,7 @@ void the_camera_loop (void* pvParameter) {
       another_save_avi(fb_curr );
       fb_next = get_good_jpeg(); // should take near zero, unless the sd is faster than the camera, when we will have to wait for the camera
 
-      digitalWrite(33, frame_cnt % 2);
+      digitalWrite(LED_PIN, frame_cnt % 2);
       if (movi_size > avi_buf_size * .95) break;
     }
 
@@ -130,7 +128,7 @@ void the_camera_loop (void* pvParameter) {
     fb_curr = fb_next;
     fb_next = NULL;
     another_save_avi(fb_curr );
-    digitalWrite(33, frame_cnt % 2);
+    digitalWrite(LED_PIN, frame_cnt % 2);
     esp_camera_fb_return(fb_curr);
     fb_curr = NULL;
     end_avi();                                // end the movie
@@ -319,7 +317,7 @@ void end_avi() {
   }
 
   Serial.println("---");
-  digitalWrite(33, HIGH);
+  digitalWrite(LED_PIN, HIGH);
 }
 
 /**
@@ -359,16 +357,12 @@ void handleNewMessages(int numNewMessages) {
       Serial.print(username);
       Serial.println(" is authorized, continue...");
 
-      if (text == "/light"){
+      if (text==("/light")){
         light = !light;
-      }
-
-      if (text == "/flash") {
+      }else if (text==("/flash")) {
         flashState = flashState == HIGH ? LOW : HIGH;
         //TODO write status changed
-      }
-
-      if (text == "/status") {
+      }else if (text==("/status")) {
         String stat = "Device: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nip: " +  WiFi.localIP().toString() + "\nAvi Enabled: " + avi_enabled;
         if (frame_interval == 0) {
           stat = stat + "\nFast 3 sec";
@@ -380,38 +374,43 @@ void handleNewMessages(int numNewMessages) {
         stat = stat + "\nQuality: " + quality;
 
         bot.sendMessage(chat_id, stat, "");
-      }
-
-      if(text == "/sleep"){ 
+      }else if(text.startsWith("/sleep")){ 
         sleep_mode = true;
-      }
-
-      if (text == "/reboot") {
+        int timeInt = 1;
+        if(text.indexOf(" ")>0){ //custom time
+          String time = text.substring(text.indexOf(" "), sizeof(text));
+          int multiplier = 1;
+          if(time.indexOf(" ")>0){ //get seconds, min, hours, days...
+            String unit = time.substring(time.indexOf(" "), sizeof(time));
+            if(unit.startsWith("m")){ //minutes
+              multiplier = 60;
+            }else if(unit.startsWith("h")){ //hours
+              multiplier = 60*60;
+            }else if(unit.startsWith("d")){ //days
+              multiplier = 60*60*24;
+            }
+          }
+          sleepTime = time.toInt() * multiplier;
+        }else{
+          sleepTime = TIME_TO_SLEEP; //default
+        }
+      }else if (text==("/reboot")) {
         reboot_request = true;
-      }
-      if (text == "/enavi") {
+      }else if (text==("/enavi")) {
         avi_enabled = true;
-      }
-
-      if (text == "/disavi") {
+      }else if(text==("/disavi")) {
         avi_enabled = false;
-      }
-
-      if (text == "/fast") {
+      }else if (text==("/fast")) {
         max_frames = 50;
         frame_interval = 0;
         speed_up_factor = 0.5;
         avi_enabled = true;
-      }
-
-      if (text == "/med") {
+      }else if (text==("/med")) {
         max_frames = 50;
         frame_interval = 125;
         speed_up_factor = 1;
         avi_enabled = true;
-      }
-
-      if (text == "/slow") {
+      }else if (text==("/slow")) {
         max_frames = 50;
         frame_interval = 500;
         speed_up_factor = 5;
@@ -455,35 +454,24 @@ void handleNewMessages(int numNewMessages) {
         }
 
         if (text == "/caption") {
-
           Serial.println("\n>>>>> Sending with a caption, bytes=  " + String(fb_length));
-
           String sent = bot.sendMultipartFormDataToTelegramWithCaption("sendPhoto", "photo", "img.jpg",
                         "image/jpeg", "Your photo", chat_id, fb_length,
                         isMoreDataAvailable, getNextByte, nullptr, nullptr);
-
           Serial.println("done!");
-
         } else {
-
           Serial.println("\n>>>>> Sending, bytes=  " + String(fb_length));
-
           bot.sendPhotoByBinary(chat_id, "image/jpeg", fb_length,
                                 isMoreDataAvailable, getNextByte,
                                 nullptr, nullptr);
-
           dataAvailable = true;
-
           Serial.println("done!");
         }
         esp_camera_fb_return(fb);
       }else if (text == "/clip") {
-
         // record the video
         bot.longPoll =  0;
-
         xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
-
         if ( the_camera_loop_task == NULL ) {
           //vTaskDelete( xHandle );
           Serial.printf("do_the_steaming_task failed to start! %d\n", the_camera_loop_task);
@@ -709,7 +697,7 @@ void initWebServer(){
   server.on("^/([a-zA-z0-9-_.]+)?\\.json$", HTTP_GET, [] (AsyncWebServerRequest *request) {
       String url = request->url();
       Serial.println(url);
-      request->send(SPIFFS, url, "text/javascript");
+      request->send(SPIFFS, url, "application/json");
   }).setAuthentication("user", "pass"); //TODO read from config
   server.on("/connect", HTTP_POST, [](AsyncWebServerRequest *request){
     saveConnection(request);

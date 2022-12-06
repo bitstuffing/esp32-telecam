@@ -3,7 +3,7 @@ ESP32-CAM-Video-Telegram is a project based on PlatformIO extracted
 from UniversalTelegramBot examples.
 
 A Telegram bot for taking a photo and short video with an ESP32Cam
-without SD card use and other streaming features
+without a SD card use and other streaming features
 
 Parts used:
 ESP32-CAM module* - http://s.click.aliexpress.com/e/bnXR1eYs
@@ -14,8 +14,9 @@ https://github.com/jameszah/ESP32-CAM-Video-Telegram, some parts
 are licenced under GNU GPLv3 (also avi video encoder), and other parts
 has been adapted by @bitstuffing under CC 4.0
 
-You needs to write in configuration file (lib/core/configuration.h) and fill
-your SSID, PASSWORD, BOT_TOKEN and if you want your private Telegram CHAT_ID
+You needs to write in configuration file (data/config.json) and fill
+your SSID, PASSWORD, BOT_TOKEN and if you want your private Telegram
+conversations fill AUTH_USERS
 *******************************************************************/
 #include "core.cpp"
 
@@ -43,8 +44,8 @@ void setup() {
 
   pinMode(12, INPUT_PULLUP);        // pull this down to stop recording
 
-  pinMode(33, OUTPUT);             // little red led on back of chip
-  digitalWrite(33, LOW);           // turn on the red LED on the back of chip
+  pinMode(LED_PIN, OUTPUT);             // little red led on back of chip
+  digitalWrite(LED_PIN, LOW);           // turn on the red LED on the back of chip
 
   avi_buf_size = 1000 * 1024; // = 1000 kb = 60 * 50 * 1024;
   idx_buf_size = 200 * 10 + 20;
@@ -117,11 +118,7 @@ void setup() {
   doc = NULL;
 }
 
-/** LOOP **/
-void loop() {
-
-  client.setHandshakeTimeout(120000);
-
+void loop_events(){
   if (reboot_request) {
     String stat = "Rebooting on request\nDevice: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nip: " +  WiFi.localIP().toString() ;
     bot.sendMessage(chat_id, stat, "");
@@ -132,7 +129,7 @@ void loop() {
     digitalWrite(FLASH_LED_PIN,LOW); //always turn off light (preserve batteries / low power consumption)
     bot.sendMessage(chat_id, "Sleeping "+String(TIME_TO_SLEEP)+" seconds", "");
     if(!led_is_on){
-      digitalWrite(33, LOW);
+      digitalWrite(LED_PIN, LOW);
     }
     esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
     esp_deep_sleep_start();
@@ -156,43 +153,56 @@ void loop() {
     sendVideo();
   }
   
-  digitalWrite(33, led_is_on ? HIGH : LOW);
+  digitalWrite(LED_PIN, led_is_on ? HIGH : LOW);
+}
 
-  if(doc==NULL || !doc["configuration"]["wifi"]["ap"]){
+void check_connection(){
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("***** WiFi reconnect *****");
+    WiFi.reconnect();
+    delay(5000);
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("***** WiFi restart *****");
+      if(!init_wifi()){
+        Serial.println("sleeping to wait for network connection, router signal could be bad :'(...");
+        esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+        esp_deep_sleep_start();
+      }
+    }
+  }
+}
+
+void check_messages(){
+  int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+  while (numNewMessages) {
+    handleNewMessages(numNewMessages);
+    numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+  }
+}
+
+/** LOOP **/
+void loop() {
+
+  client.setHandshakeTimeout(120000);
+
+  loop_events();
+
+  if(nullptr == doc || !doc["configuration"]["wifi"]["ap"]){
     Serial.println("forcing opening config...");
     doc = getFileContent("/config.json");
   }
 
   ap_enabled = doc["configuration"]["wifi"]["ap"].as<bool>();
 
-  if (nullptr != deferredRequest){
+  if (nullptr != deferredRequest){ //trick to win ;)
     deferredRequest->send(SPIFFS, "/www"+deferredRequest->url(), String(), true);
     deferredRequest = nullptr;
   }
   
   if(!ap_enabled) {
-
     if (millis() > bot_lasttime + BOT_MTBS )  {
-      Serial.println("timeout!");
-      if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("***** WiFi reconnect *****");
-        WiFi.reconnect();
-        delay(5000);
-        if (WiFi.status() != WL_CONNECTED) {
-          Serial.println("***** WiFi restart *****");
-          if(!init_wifi()){
-            Serial.println("sleeping to wait for network connection router...");
-            esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-            esp_deep_sleep_start();
-          }
-        }
-      }
-      int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-
-      while (numNewMessages) {
-        handleNewMessages(numNewMessages);
-        numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-      }
+      check_connection();
+      check_messages();
       bot_lasttime = millis();
     }
   }

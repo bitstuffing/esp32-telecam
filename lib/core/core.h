@@ -21,6 +21,7 @@
 
 bool reboot_request = false;
 bool sleep_mode = false;
+int sleepTime = TIME_TO_SLEEP; //default one minute
 
 #define CAMERA_MODEL_AI_THINKER
 #define PWDN_GPIO_NUM     32
@@ -43,10 +44,13 @@ bool sleep_mode = false;
 
 #define FORMAT_SPIFFS_IF_FAILED true
 
+#define FLASH_LED_PIN 4
+#define LED_PIN 33
+
 // change timezone with https://sites.google.com/a/usapiens.com/opnode/time-zones
 String TIMEZONE = "CET-1CEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00";
 
-static const char vernum[] = "esp32-cam telegram 0.2";
+static const char vernum[] = "esp32-telecam 0.2";
 String devstr =  "ESP32-TeleCam";
 framesize_t configframesize = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
 
@@ -59,7 +63,7 @@ int qualityconfig = 5;
 int framesize = FRAMESIZE_VGA; //FRAMESIZE_HD;
 int frame_interval = 0; // 0 = record at full speed, 100 = 100 ms delay between frames
 int max_frames = 50;
-#define FLASH_LED_PIN 4
+
 float speed_up_factor = 0.5; // 1 = play at realtime, 0.5 = slow motion, 10 = speedup 10x
 
 long bot_lasttime;   //last time messages' scan has been done
