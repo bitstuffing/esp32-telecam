@@ -275,10 +275,11 @@ void handleNewMessages(int numNewMessages);
 void sendPicture();
 void sendVideo();
 
+bool saveTelegram(AsyncWebServerRequest *request);
 bool saveConnection(AsyncWebServerRequest *request);
 void initWebServer();
 
-StaticJsonDocument<2000> getFileContent(String filename);
+DynamicJsonDocument getFileContent(String filename);
 void fillAuthUsers(JsonArray result);
 bool connectWifi(AsyncWebServerRequest *request);
 String processor(const String& var);

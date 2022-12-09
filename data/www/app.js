@@ -15,5 +15,19 @@ $(document).ready(function() {
       });
     });
   });
+  $("#settingsLink").click(function(){
+    $.get("/telegram.html", function(data){
+      $("#container").html(data);
+      $("#telegramButton").click(function() {
+        var form = {
+          'telegramToken' : $("#telegramToken").val()
+        }
+        $.post("/telegram",form,function(data){
+          alert(data.result);
+        });
+      });
+    });
+  });
+
 });
 

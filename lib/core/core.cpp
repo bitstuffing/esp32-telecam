@@ -665,19 +665,56 @@ void sendVideo() {
 
 
 //FILE SYSTEM FUNCTIONS
-bool saveConnection(AsyncWebServerRequest *request){
-  if(request->hasArg("wifiSSID") && request->hasArg("wifiPassword")){
+bool saveTelegram(AsyncWebServerRequest *request){
+  if(request->hasArg("telegramToken") && request->hasArg("telegramToken")){
+
+    //build json document
+    StaticJsonDocument<2000> doc = getFileContent("/config.json");
+    doc["configuration"]["bottoken"] = request->arg("telegramToken");
+
     File configFile = SPIFFS.open("/config.json", FILE_WRITE);
     if (!configFile) {
       Serial.println("Failed to open config file in write mode");
       return false;
     }
+    
+    //now store
+    Serial.println("writting to file...");
+    if (serializeJson(doc, configFile) == 0) {
+      Serial.println("Failed to parse config file");
+      return false;
+    }
+    Serial.println("done!");
+    configFile.close();
+
+    StaticJsonDocument<100> data;
+    data["result"] = "ok";
+    String response;
+    serializeJson(data, response);
+    request->send(200, "application/json", response);
+  }
+  return true;
+}
+
+bool saveConnection(AsyncWebServerRequest *request){
+  if(request->hasArg("wifiSSID") && request->hasArg("wifiPassword")){
     //build json document
-    StaticJsonDocument<2000> doc = getFileContent("/config.json");
+    DynamicJsonDocument doc(2000);
+    
+    doc = getFileContent("/config.json");
+    
     doc["configuration"]["wifi"]["bssid"] = request->arg("wifiSSID");
     doc["configuration"]["wifi"]["password"] = request->arg("wifiPassword");
     doc["configuration"]["wifi"]["ap"] = request->arg("wifiClient") == "true";
+    
     //now store
+    
+    File configFile = SPIFFS.open("/config.json", FILE_WRITE);
+    if (!configFile) {
+      Serial.println("Failed to open config file in write mode");
+      return false;
+    }
+
     Serial.println("writting to file...");
     if (serializeJson(doc, configFile) == 0) {
       Serial.println("Failed to parse config file");
@@ -702,7 +739,6 @@ void initWebServer(){
   });
   server.on("^/([a-zA-z0-9-_.]+)?\\.json$", HTTP_GET, [] (AsyncWebServerRequest *request) {
       String url = request->url();
-      Serial.println(url);
       request->send(SPIFFS, url, "application/json");
   }).setAuthentication("user", "pass"); //TODO read from config
   server.on("/connect", HTTP_POST, [](AsyncWebServerRequest *request){
@@ -710,8 +746,9 @@ void initWebServer(){
     //connectWifi(request);
     ESP.restart();
   });
-  server.on("/connect.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/www/connect.html", String(), false, processor);
+  server.on("/telegram", HTTP_POST, [](AsyncWebServerRequest *request){
+    saveTelegram(request);
+    ESP.restart();
   });
   //server.serveStatic("/", SPIFFS, "/www");
   server.on("^/([a-zA-z0-9-_.]+)?\\.js$", HTTP_GET, downloadPage);
@@ -725,17 +762,15 @@ static void downloadPage(AsyncWebServerRequest* request){
     deferredRequest = request;
 }
 
-StaticJsonDocument<2000> getFileContent(String filename){
-  StaticJsonDocument<2000> doc;
-  File configFile = SPIFFS.open(filename, "r");
+DynamicJsonDocument getFileContent(String filename){
+  DynamicJsonDocument doc(2000);
+  File configFile = SPIFFS.open(filename, FILE_READ);
   if (!configFile) {
     Serial.println("Failed to open config file");
-    
   }
   size_t size = configFile.size();
   if (size > 1024) {
     Serial.println("Config file size is too large"); //ups ;) 
-    
   }
   // Allocate a buffer to store contents of the file.
   std::unique_ptr<char[]> buf(new char[size]);
