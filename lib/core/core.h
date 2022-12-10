@@ -280,6 +280,10 @@ bool saveConnection(AsyncWebServerRequest *request);
 void initWebServer();
 
 DynamicJsonDocument getFileContent(String filename);
+bool saveDocument(DynamicJsonDocument doc);
 void fillAuthUsers(JsonArray result);
 bool connectWifi(AsyncWebServerRequest *request);
+void getAuthUsers(AsyncWebServerRequest *request);
+void addAuthUser(AsyncWebServerRequest *request);
+void removeAuthUser(AsyncWebServerRequest *request);
 String processor(const String& var);

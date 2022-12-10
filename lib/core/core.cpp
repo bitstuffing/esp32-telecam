@@ -665,30 +665,33 @@ void sendVideo() {
 
 
 //FILE SYSTEM FUNCTIONS
+bool saveDocument(DynamicJsonDocument doc){
+  File configFile = SPIFFS.open("/config.json", FILE_WRITE);
+  if (!configFile) {
+    Serial.println("Failed to open config file in write mode");
+    return false;
+  }
+  Serial.println("writting to file...");
+  if (serializeJson(doc, configFile) == 0) {
+    Serial.println("Failed to parse config file");
+    return false;
+  }
+  configFile.close();
+  Serial.println("done!");
+  return true;
+}
+
 bool saveTelegram(AsyncWebServerRequest *request){
   if(request->hasArg("telegramToken") && request->hasArg("telegramToken")){
 
     //build json document
-    StaticJsonDocument<2000> doc = getFileContent("/config.json");
+    doc = getFileContent("/config.json");
     doc["configuration"]["bottoken"] = request->arg("telegramToken");
 
-    File configFile = SPIFFS.open("/config.json", FILE_WRITE);
-    if (!configFile) {
-      Serial.println("Failed to open config file in write mode");
-      return false;
-    }
-    
-    //now store
-    Serial.println("writting to file...");
-    if (serializeJson(doc, configFile) == 0) {
-      Serial.println("Failed to parse config file");
-      return false;
-    }
-    Serial.println("done!");
-    configFile.close();
+    String result = saveDocument(doc) ? "ok" : "error";
 
     StaticJsonDocument<100> data;
-    data["result"] = "ok";
+    data["result"] = result;
     String response;
     serializeJson(data, response);
     request->send(200, "application/json", response);
@@ -699,8 +702,6 @@ bool saveTelegram(AsyncWebServerRequest *request){
 bool saveConnection(AsyncWebServerRequest *request){
   if(request->hasArg("wifiSSID") && request->hasArg("wifiPassword")){
     //build json document
-    DynamicJsonDocument doc(2000);
-    
     doc = getFileContent("/config.json");
     
     doc["configuration"]["wifi"]["bssid"] = request->arg("wifiSSID");
@@ -709,22 +710,10 @@ bool saveConnection(AsyncWebServerRequest *request){
     
     //now store
     
-    File configFile = SPIFFS.open("/config.json", FILE_WRITE);
-    if (!configFile) {
-      Serial.println("Failed to open config file in write mode");
-      return false;
-    }
-
-    Serial.println("writting to file...");
-    if (serializeJson(doc, configFile) == 0) {
-      Serial.println("Failed to parse config file");
-      return false;
-    }
-    Serial.println("done!");
-    configFile.close();
+    String result = saveDocument(doc) ? "ok" : "error";
 
     StaticJsonDocument<100> data;
-    data["result"] = "ok";
+    data["result"] = result;
     String response;
     serializeJson(data, response);
     request->send(200, "application/json", response);
@@ -746,6 +735,15 @@ void initWebServer(){
     //connectWifi(request);
     ESP.restart();
   });
+  server.on("/getAuthUsers", HTTP_GET, [](AsyncWebServerRequest *request){
+    getAuthUsers(request);
+  });
+  server.on("/addAuthUser", HTTP_POST, [](AsyncWebServerRequest *request){
+    addAuthUser(request);
+  });
+  server.on("/removeAuthUser", HTTP_POST, [](AsyncWebServerRequest *request){
+    removeAuthUser(request);
+  });
   server.on("/telegram", HTTP_POST, [](AsyncWebServerRequest *request){
     saveTelegram(request);
     ESP.restart();
@@ -762,8 +760,59 @@ static void downloadPage(AsyncWebServerRequest* request){
     deferredRequest = request;
 }
 
+void getAuthUsers(AsyncWebServerRequest *request){
+  int count = NUM_ITEMS(authUsers);
+  int size = sizeof(authUsers)*2;
+  doc = getFileContent("/config.json");
+  String response;  
+  serializeJson(doc["configuration"]["authUsers"],response);
+  request->send(200, "application/json", response);
+}
+void addAuthUser(AsyncWebServerRequest *request){
+  doc = getFileContent("/config.json");
+  String username = request->arg("newUser");
+  JsonArray array = doc["configuration"]["authUsers"];
+  boolean found = false;
+  for(int i=0;!found && i<array.size();i++){
+    found = (array[i].as<String>() == username);
+  }
+  StaticJsonDocument<100> data;
+  if(!found){
+    array.add(username);
+    //doc["configuration"]["authUsers"] = array;
+    String result = saveDocument(doc) ? "ok" : "error";
+    data["result"] = result;
+  }else{
+    data["result"] = "repeated";
+  }
+  String response;
+  serializeJson(data, response);
+  request->send(200, "application/json", response);
+}
+void removeAuthUser(AsyncWebServerRequest *request){
+  doc = getFileContent("/config.json");
+  String username = request->arg("delUser");
+  JsonArray array = doc["configuration"]["authUsers"];
+  boolean found = false;
+  for(int i=0;!found && i<array.size();i++){
+    found = (array[i].as<String>() == username);
+    if(found){
+      array.remove(i);
+    }
+  }
+  StaticJsonDocument<100> data;
+  if(found){
+    String result = saveDocument(doc) ? "ok" : "error";
+    data["result"] = result;
+  }else{
+    data["result"] = "not_found";
+  }
+  String response;
+  serializeJson(data, response);
+  request->send(200, "application/json", response);
+}
+
 DynamicJsonDocument getFileContent(String filename){
-  DynamicJsonDocument doc(2000);
   File configFile = SPIFFS.open(filename, FILE_READ);
   if (!configFile) {
     Serial.println("Failed to open config file");
@@ -778,7 +827,6 @@ DynamicJsonDocument getFileContent(String filename){
   // buffer to be mutable. 
   configFile.readBytes(buf.get(), size);
   auto error = deserializeJson(doc, buf.get());
-  //deserializeJson(doc, ZERO_COPY(buf.get()));
   if (error) {
     Serial.println("Failed to parse config file");
     Serial.println(error.f_str());
