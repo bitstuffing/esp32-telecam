@@ -24,9 +24,11 @@ You're free to change and print the 3D model following the next link:
 
 https://cad.onshape.com/documents/77f04ae4b5fcef7d9e99be35/w/0d8533bbdae142046f8fdeea/e/9711b1c9e78f932d2447bd4e?renderMode=0&uiState=638a0af07e7369624d2191ba
 
+There is an assembled piece with target ESP32-CAM. You can print and fork it.
+
 ## Preview
 
-![ESP32-TELECAM](https://i.ibb.co/N2p3gpr/esp32-telecam.png)
+![ESP32-TELECAM](https://i.ibb.co/prq4gQx/esp32-telecam.png)
 
 ## Configuration
 
